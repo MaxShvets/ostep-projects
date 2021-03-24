@@ -95,7 +95,7 @@ Command get_command() {
   return command;
 }
 
-int execute_command(Command command) {
+void execute_system_command(Command command) {
   int rc = fork();
   if (rc < 0) {
     fprintf(stderr, "failed to create a subprocess: %s", strerror(errno));
@@ -107,8 +107,14 @@ int execute_command(Command command) {
   } else {
     wait(NULL);
   }
+}
 
-  return 0;
+void execute_command(Command command) {
+  if (strcmp(command.name, "exit") == 0) {
+    exit(0);
+  } else {
+    execute_system_command(command);
+  }
 }
 
 int main(int argc, char *argv[]) {
