@@ -66,13 +66,14 @@ Command get_command() {
   char *name = NULL;
   get_word(&name);
 
-  size_t buff_size = 2;
+  size_t buff_size = 4;
   char **args = malloc(sizeof(char **) * buff_size);
+  args[0] = name;
   if (args == NULL) {
     fprintf(stderr, "failed to allocate memory for arguments: %s", strerror(errno));
     exit(1);
   }
-  int i = 0;
+  int i = 1;
 
   while (consume_whitespace() != 1) {
     if (i == buff_size - 1) {
@@ -111,6 +112,13 @@ int execute_command(Command command) {
 }
 
 int main(int argc, char *argv[]) {
-  Command command = get_command();
-  execute_command(command);
+  Command command;
+
+  //char *args[3] = { "echo", "hey", "boys",  NULL };
+  //execv("/bin/echo", args);
+
+  while (1) {
+    command = get_command();
+    execute_command(command);
+  }
 }
