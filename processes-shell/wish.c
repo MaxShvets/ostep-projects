@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/errno.h>
+#include <unistd.h>
 
 typedef struct command {
   char *name;
@@ -60,6 +61,7 @@ size_t get_word(char **wordp) {
 }
 
 Command get_command() {
+  printf("wish> ");
   consume_whitespace();
   char *name = NULL;
   get_word(&name);
@@ -92,12 +94,23 @@ Command get_command() {
   return command;
 }
 
+int execute_command(Command command) {
+  int rc = fork();
+  if (rc < 0) {
+    fprintf(stderr, "failed to create a subprocess: %s", strerror(errno));
+  } else if (rc == 0) {
+    char command_path[50] = "/bin/";
+    strncat(command_path, command.name, 10);
+    execv(command_path, command.args);
+    fprintf(stderr, "something went wrong");
+  } else {
+    wait(NULL);
+  }
+
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   Command command = get_command();
-  
-  printf("command: %s\n", command.name);
-  int i = 0;
-  while(command.args[i] != NULL) {
-    printf("arg: %s\n", command.args[i++]);
-  }
+  execute_command(command);
 }
