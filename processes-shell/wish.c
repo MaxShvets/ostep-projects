@@ -5,9 +5,49 @@
 #include <sys/errno.h>
 #include <unistd.h>
 
+typedef struct str_list_node {
+  char *str;
+  struct str_list_node *next;
+} StringListNode;
+
+typedef struct str_list {
+  int len;
+  StringListNode *start;
+  StringListNode *end;
+} StringList;
+
+StringList str_list_init() {
+  StringList list = { 0, NULL, NULL  };
+  return list;
+}
+
+int str_list_append_item(StringList *list, char *str) {
+  StringListNode *node = malloc(sizeof(StringListNode));
+  node->str = strdup(str);
+  
+  if (list->start == NULL) {
+    list->start = node;
+  } else {
+    list->end->next = node;
+  }
+
+  list->end = node;
+
+  return ++(list->len);
+}
+
+void str_list_output(StringList *list) {
+  StringListNode *node;
+  int i;
+    
+  for (node = list->start, i = 0; node != NULL; i++, node = node->next) {
+    printf("%d: %s", i, node->str);
+  } 
+}
+
 typedef struct command {
   char *name;
-  char **args;
+  StringList args;
 } Command;
 
 int consume_whitespace() {
@@ -66,33 +106,45 @@ Command get_command() {
   char *name = NULL;
   get_word(&name);
 
-  size_t buff_size = 4;
-  char **args = malloc(sizeof(char **) * buff_size);
-  args[0] = name;
-  if (args == NULL) {
-    fprintf(stderr, "failed to allocate memory for arguments: %s", strerror(errno));
-    exit(1);
-  }
-  int i = 1;
+  StringList args_list = str_list_init();
 
   while (consume_whitespace() != 1) {
-    if (i == buff_size - 1) {
-      buff_size *= 2;
-      args = realloc(args, sizeof(char **) * buff_size);
-      
-      if (args == NULL) {
-	fprintf(stderr, "failed to allocate memory for arguments: %s", strerror(errno));
-	exit(1);
-      }
-    }
-    
-    get_word(args + (i++));
+    char *word = NULL;
+    get_word(&word);
+    str_list_append_item(&args_list, word);
   }
 
-  args[i] = NULL;
-  Command command = { name, args };
+  Command command = { name, args_list };
 
   return command;
+}
+
+char *get_command_path(Command command) {
+  char base[6] = "/bin/";
+  char *path = malloc((strlen(base) + strlen(command.name) + 1) * sizeof(char));
+  if (path == NULL) {
+    fprintf(stderr, "couldn't allocate memory for command path: %s", strerror(errno));
+    exit(1);
+  }
+  strcpy(path, base);
+  strcat(path, command.name);
+
+  return path;
+}
+
+char **get_command_args_array(Command command) {
+  char **array = malloc(command.args.len * sizeof(char *) + 2);
+  array[0] = command.name;
+  StringListNode *node;
+  int i;
+  
+  for (i = 1, node = command.args.start; node != NULL; i++, node = node->next) {
+    array[i] = node->str;
+  }
+
+  array[++i] = NULL;
+
+  return array;
 }
 
 void execute_system_command(Command command) {
@@ -100,10 +152,12 @@ void execute_system_command(Command command) {
   if (rc < 0) {
     fprintf(stderr, "failed to create a subprocess: %s", strerror(errno));
   } else if (rc == 0) {
-    char command_path[50] = "/bin/";
-    strncat(command_path, command.name, 10);
-    execv(command_path, command.args);
-    fprintf(stderr, "something went wrong");
+    char *command_path = get_command_path(command);
+    printf("command path: %s\n", command_path);
+    char **args_array = get_command_args_array(command);
+    
+    execv(command_path, args_array);
+    fprintf(stderr, "something went wrong\n");
   } else {
     wait(NULL);
   }
@@ -119,9 +173,6 @@ void execute_command(Command command) {
 
 int main(int argc, char *argv[]) {
   Command command;
-
-  //char *args[3] = { "echo", "hey", "boys",  NULL };
-  //execv("/bin/echo", args);
 
   while (1) {
     command = get_command();
