@@ -3,6 +3,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define DEBUG
@@ -29,6 +31,7 @@ StringList* str_list_init() {
 int str_list_append_item(StringList *list, char *str) {
   StringListNode *node = malloc(sizeof(StringListNode));
   node->str = strdup(str);
+  node->next = NULL;
   
   if (list->start == NULL) {
     list->start = node;
@@ -147,7 +150,7 @@ char *get_command_path(Command command) {
 }
 
 char **get_command_args_array(Command command) {
-  char **array = malloc(command.args->len * sizeof(char *) + 2);
+  char **array = malloc((command.args->len + 2) * sizeof(char *));
   array[0] = command.name;
   StringListNode *node;
   int i;
@@ -156,7 +159,7 @@ char **get_command_args_array(Command command) {
     array[i] = node->str;
   }
 
-  array[++i] = NULL;
+  array[i] = NULL;
 
   return array;
 }
