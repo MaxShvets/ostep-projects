@@ -129,6 +129,7 @@ Command get_command() {
     char *word = NULL;
     get_word(&word);
     str_list_append_item(args_list, word);
+    free(word);
   }
 
   Command command = { name, args_list };
