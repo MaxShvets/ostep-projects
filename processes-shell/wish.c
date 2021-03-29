@@ -187,12 +187,14 @@ void execute_system_command(Command command) {
   }
 }
 
-void execute_command(Command command) {
+int execute_command(Command command) {
   if (strcmp(command.name, "exit") == 0) {
-    exit(0);
+    return 1;
   } else {
     execute_system_command(command);
   }
+
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -200,7 +202,11 @@ int main(int argc, char *argv[]) {
 
   while (1) {
     command = get_command();
-    execute_command(command);
+    int rc = execute_command(command);
     clear_command(command);
+
+    if (rc != 0) {
+      break;
+    }
   }
 }
