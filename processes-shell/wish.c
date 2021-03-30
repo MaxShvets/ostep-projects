@@ -44,17 +44,32 @@ int str_list_append_item(StringList *list, char *str) {
   return ++(list->len);
 }
 
-void str_list_free(StringList *list) {
-  StringListNode *node = list->start;
-  
+void str_list_free_nodes(StringListNode *start) {
+  StringListNode *node = start;
+
   while (node != NULL) {
     StringListNode *next_node = node->next;
     free(node->str);
     free(node);
     node = next_node;
   }
+}
 
+void str_list_free(StringList *list) {
+  str_list_free_nodes(list->start);
   free(list);
+}
+
+void str_list_overwrite(StringList *src, StringList *dest) {
+  str_list_free_nodes(dest->start);
+  dest->len = 0;
+  dest->start = NULL;
+  dest->end = NULL;
+  StringListNode* src_node;
+
+  for (src_node = src->start; src_node != NULL; src_node = src_node->next) {
+    str_list_append_item(dest, src_node->str);
+  }
 }
 
 typedef struct command {
@@ -137,17 +152,25 @@ Command get_command() {
   return command;
 }
 
-char *get_command_path(Command command) {
-  char base[6] = "/bin/";
-  char *path = malloc((strlen(base) + strlen(command.name) + 1) * sizeof(char));
-  if (path == NULL) {
-    fprintf(stderr, "couldn't allocate memory for command path: %s", strerror(errno));
-    exit(1);
-  }
-  strcpy(path, base);
-  strcat(path, command.name);
+char *get_command_path(StringList *search_paths, Command command) {
+  StringListNode *path;
 
-  return path;
+  for (path = search_paths->start; path != NULL; path = path->next) {
+    char *command_path = malloc((strlen(path->str) + strlen(command.name) + 2) * sizeof(char));
+    if (command_path == NULL) {
+      fprintf(stderr, "couldn't allocate memory for command path: %s", strerror(errno));
+      exit(1);
+    }
+    strcpy(command_path, path->str);
+    strcat(command_path, "/");
+    strcat(command_path, command.name);
+
+    if (access(command_path, X_OK) == 0) {
+      return command_path;
+    }
+  }
+
+  return NULL;
 }
 
 char **get_command_args_array(Command command) {
@@ -155,7 +178,7 @@ char **get_command_args_array(Command command) {
   array[0] = command.name;
   StringListNode *node;
   int i;
-  
+
   for (i = 1, node = command.args->start; node != NULL; i++, node = node->next) {
     array[i] = node->str;
   }
@@ -165,12 +188,17 @@ char **get_command_args_array(Command command) {
   return array;
 }
 
-void execute_system_command(Command command) {
+void execute_system_command(StringList *search_paths, Command command) {
   int rc = fork();
   if (rc < 0) {
     fprintf(stderr, "failed to create a subprocess: %s", strerror(errno));
   } else if (rc == 0) {
-    char *command_path = get_command_path(command);
+    char *command_path = get_command_path(search_paths, command);
+    if (command_path == NULL) {
+      printf("something went wrong\n");
+      return;
+    }
+
     char **args_array = get_command_args_array(command);
     
 #ifdef DEBUG
@@ -179,7 +207,7 @@ void execute_system_command(Command command) {
       printf("arg: %s, %p\n", args_array[i], args_array + i);
     }
 #endif
-    
+
     execv(command_path, args_array);
     fprintf(stderr, "something went wrong\n");
   } else {
@@ -187,11 +215,20 @@ void execute_system_command(Command command) {
   }
 }
 
-int execute_command(Command command) {
+int execute_command(StringList *search_paths, Command command) {
+#ifdef DEBUG
+  printf("paths:\n");
+  for (StringListNode *node = search_paths->start; node != NULL; node = node->next) {
+    printf("- %s\n", node->str);
+  }
+#endif
+
   if (strcmp(command.name, "exit") == 0) {
     return 1;
+  } else if (strcmp(command.name, "path") == 0) {
+    str_list_overwrite(command.args, search_paths);
   } else {
-    execute_system_command(command);
+    execute_system_command(search_paths, command);
   }
 
   return 0;
@@ -199,14 +236,18 @@ int execute_command(Command command) {
 
 int main(int argc, char *argv[]) {
   Command command;
+  StringList *search_paths = str_list_init();
+  str_list_append_item(search_paths, "/bin");
 
   while (1) {
     command = get_command();
-    int rc = execute_command(command);
+    int rc = execute_command(search_paths, command);
     clear_command(command);
 
     if (rc != 0) {
       break;
     }
   }
+
+  str_list_free(search_paths);
 }
