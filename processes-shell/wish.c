@@ -169,6 +169,13 @@ Command get_command() {
 }
 
 char *get_command_path(StringList *search_paths, Command command) {
+#ifdef DEBUG
+  printf("looking for command in:\n");
+  for (StringListNode *node = search_paths->start; node != NULL; node = node->next) {
+    printf("- %s\n", node->str);
+  }
+#endif
+
   StringListNode *path;
 
   for (path = search_paths->start; path != NULL; path = path->next) {
@@ -184,6 +191,8 @@ char *get_command_path(StringList *search_paths, Command command) {
     if (access(command_path, X_OK) == 0) {
       return command_path;
     }
+
+    free(command_path);
   }
 
   return NULL;
@@ -226,47 +235,43 @@ int setup_output(Command command) {
 }
 
 void execute_system_command(StringList *search_paths, Command command) {
+  char *command_path = get_command_path(search_paths, command);
+  if (command_path == NULL) {
+    fprintf(stderr, "something went wrong\n");
+    return;
+  }
+
+  char **args_array = get_command_args_array(command);
+
+#ifdef DEBUG
+  printf("Command path: %s, %p\n", command_path, command_path);
+  for (int i = 0; args_array[i] != NULL; i++) {
+    printf("arg: %s, %p\n", args_array[i], args_array + i);
+  }
+  char *out_file_name = command.out_file_name;
+  printf("Output path: %s\n", out_file_name == NULL ? "null" : out_file_name);
+#endif
+
   int rc = fork();
   if (rc < 0) {
     fprintf(stderr, "failed to create a subprocess: %s", strerror(errno));
   } else if (rc == 0) {
-    char *command_path = get_command_path(search_paths, command);
-    if (command_path == NULL) {
-      fprintf(stderr, "something went wrong\n");
-      return;
-    }
-
-    char **args_array = get_command_args_array(command);
     int rc = setup_output(command);
     if (rc != 0) {
       fprintf(stderr, "something went wrong\n");
       return;
     }
     
-#ifdef DEBUG
-    printf("Command path: %s, %p\n", command_path, command_path);
-    for (int i = 0; args_array[i] != NULL; i++) {
-      printf("arg: %s, %p\n", args_array[i], args_array + i);
-    }
-    char *out_file_name = command.out_file_name;
-    printf("Output path: %s\n", out_file_name == NULL ? "null" : out_file_name);
-#endif
-
     execv(command_path, args_array);
     fprintf(stderr, "something went wrong\n");
   } else {
     wait(NULL);
+    free(command_path);
+    free(args_array);
   }
 }
 
 int execute_command(StringList *search_paths, Command command) {
-#ifdef DEBUG
-  printf("paths:\n");
-  for (StringListNode *node = search_paths->start; node != NULL; node = node->next) {
-    printf("- %s\n", node->str);
-  }
-#endif
-
   if (strcmp(command.name, "exit") == 0) {
     return 1;
   } else if (strcmp(command.name, "path") == 0) {
