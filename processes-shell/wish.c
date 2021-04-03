@@ -82,21 +82,6 @@ void clear_command(Command command) {
   str_list_free(command.args);
 }
 
-int consume_whitespace() {
-  char c;
-
-  while (1) {
-    c = getc(stdin);
-    
-    if (!isspace(c)) {
-      ungetc(c, stdin);
-      return 0;
-    } else if (c == '\n') {
-      return 1;
-    }
-  }
-}
-
 size_t get_word(char **wordp) {
   size_t word_size = 2;
   *wordp = malloc(sizeof(char) * word_size);
@@ -132,22 +117,44 @@ size_t get_word(char **wordp) {
   return i;
 }
 
+enum WordMeaning {COMMAND_NAME, ARG};
+
+int consume_whitespace() {
+  char c;
+
+  while (1) {
+    c = getc(stdin);
+
+    if (!isspace(c)) {
+      ungetc(c, stdin);
+      return 0;
+    } else if (c == '\n') {
+      return 1;
+    }
+  }
+}
+
 Command get_command() {
   printf("wish> ");
-  consume_whitespace();
-  char *name = NULL;
-  get_word(&name);
-
-  StringList *args_list = str_list_init();
+  enum WordMeaning next_word_meaning = COMMAND_NAME;
+  Command command = { NULL, str_list_init() };
 
   while (consume_whitespace() != 1) {
     char *word = NULL;
     get_word(&word);
-    str_list_append_item(args_list, word);
-    free(word);
-  }
 
-  Command command = { name, args_list };
+    switch (next_word_meaning) {
+    case COMMAND_NAME:
+      command.name = strdup(word);
+      break;
+    case ARG:
+      str_list_append_item(command.args, word);
+      break;
+    }
+
+    free(word);
+    next_word_meaning = ARG;
+  }
 
   return command;
 }
