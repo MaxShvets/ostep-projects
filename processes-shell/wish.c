@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,7 @@ void str_list_overwrite(StringList *src, StringList *dest) {
 typedef struct command {
   char *name;
   StringList *args;
+  char *out_file_name;
 } Command;
 
 void clear_command(Command command) {
@@ -117,29 +119,34 @@ size_t get_word(char **wordp) {
   return i;
 }
 
-enum WordMeaning {COMMAND_NAME, ARG};
+enum WordMeaning {COMMAND_NAME, ARG, OUTPUT_FILE};
 
 int consume_whitespace() {
-  char c;
+  char c = getc(stdin);
 
-  while (1) {
+  while (isspace(c) && c != '\n') {
     c = getc(stdin);
-
-    if (!isspace(c)) {
-      ungetc(c, stdin);
-      return 0;
-    } else if (c == '\n') {
-      return 1;
-    }
   }
+
+  return c;
 }
 
 Command get_command() {
   printf("wish> ");
   enum WordMeaning next_word_meaning = COMMAND_NAME;
-  Command command = { NULL, str_list_init() };
+  Command command = { NULL, str_list_init(), NULL };
 
-  while (consume_whitespace() != 1) {
+  while (1) {
+    char c = consume_whitespace();
+    if (c == '\n') {
+      break;
+    } else if (c == '>') {
+      next_word_meaning = OUTPUT_FILE;
+      continue;
+    } else {
+      ungetc(c, stdin);
+    }
+    
     char *word = NULL;
     get_word(&word);
 
@@ -150,6 +157,8 @@ Command get_command() {
     case ARG:
       str_list_append_item(command.args, word);
       break;
+    case OUTPUT_FILE:
+      command.out_file_name = strdup(word);
     }
 
     free(word);
@@ -195,6 +204,27 @@ char **get_command_args_array(Command command) {
   return array;
 }
 
+int setup_output(Command command) {
+  if (command.out_file_name == NULL) {
+    return 0;
+  }
+
+  FILE *out_file = fopen(command.out_file_name, "w");
+  if (out_file == NULL) {
+    fprintf(stderr, "error while opening file: %s\n", strerror(errno));
+    return 1;
+  }
+  int out_fd = fileno(out_file);
+
+  close(STDOUT_FILENO);
+  dup2(out_fd, STDOUT_FILENO);
+
+  close(STDERR_FILENO);
+  dup2(out_fd, STDERR_FILENO);
+
+  return 0;
+}
+
 void execute_system_command(StringList *search_paths, Command command) {
   int rc = fork();
   if (rc < 0) {
@@ -202,17 +232,24 @@ void execute_system_command(StringList *search_paths, Command command) {
   } else if (rc == 0) {
     char *command_path = get_command_path(search_paths, command);
     if (command_path == NULL) {
-      printf("something went wrong\n");
+      fprintf(stderr, "something went wrong\n");
       return;
     }
 
     char **args_array = get_command_args_array(command);
+    int rc = setup_output(command);
+    if (rc != 0) {
+      fprintf(stderr, "something went wrong\n");
+      return;
+    }
     
 #ifdef DEBUG
     printf("Command path: %s, %p\n", command_path, command_path);
     for (int i = 0; args_array[i] != NULL; i++) {
       printf("arg: %s, %p\n", args_array[i], args_array + i);
     }
+    char *out_file_name = command.out_file_name;
+    printf("Output path: %s\n", out_file_name == NULL ? "null" : out_file_name);
 #endif
 
     execv(command_path, args_array);
