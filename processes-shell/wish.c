@@ -82,6 +82,7 @@ typedef struct command {
 void clear_command(Command command) {
   free(command.name);
   str_list_free(command.args);
+  free(command.out_file_name);
 }
 
 size_t get_word(char **wordp) {
