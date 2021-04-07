@@ -12,6 +12,7 @@
 #include "str_list.h"
 
 #define DEBUG
+#define ERROR_MESSAGE "something went wrong\n"
 
 char *get_command_path(StringList *search_paths, Command command) {
 #ifdef DEBUG
@@ -82,7 +83,7 @@ int setup_output(Command command) {
 void execute_system_command(StringList *search_paths, Command command) {
   char *command_path = get_command_path(search_paths, command);
   if (command_path == NULL) {
-    fprintf(stderr, "something went wrong\n");
+    fprintf(stderr, ERROR_MESSAGE);
     return;
   }
 
@@ -103,12 +104,12 @@ void execute_system_command(StringList *search_paths, Command command) {
   } else if (rc == 0) {
     int rc = setup_output(command);
     if (rc != 0) {
-      fprintf(stderr, "something went wrong\n");
+      fprintf(stderr, ERROR_MESSAGE);
       return;
     }
     
     execv(command_path, args_array);
-    fprintf(stderr, "something went wrong\n");
+    fprintf(stderr, ERROR_MESSAGE);
   } else {
     wait(NULL);
     free(command_path);
@@ -121,6 +122,16 @@ int execute_command(StringList *search_paths, Command command) {
     return 1;
   } else if (strcmp(command.name, "path") == 0) {
     str_list_overwrite(command.args, search_paths);
+  } else if (strcmp(command.name, "cd") == 0) {
+    if (command.args->len != 1) {
+      fprintf(stderr, ERROR_MESSAGE);
+    }
+
+    int rc = chdir(command.args->start->str);
+
+    if (rc != 0) {
+      fprintf(stderr, ERROR_MESSAGE);
+    }
   } else {
     execute_system_command(search_paths, command);
   }
