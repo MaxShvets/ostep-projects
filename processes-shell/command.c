@@ -6,13 +6,14 @@
 
 #include "command.h"
 
-void clear_command(Command command) {
-  free(command.name);
-  str_list_free(command.args);
-  free(command.out_file_name);
+void clear_command(Command *command) {
+  free(command->name);
+  str_list_free(command->args);
+  free(command->out_file_name);
+  free(command);
 }
 
-size_t get_word(char **wordp) {
+size_t get_word(char **wordp, FILE *input) {
   size_t word_size = 2;
   *wordp = malloc(sizeof(char) * word_size);
   if (*wordp == NULL) {
@@ -22,8 +23,13 @@ size_t get_word(char **wordp) {
 
   int i = 0;
   char c;
+  
+  while ((c = getc(input))) {
+    if (isspace(c) || c == EOF) {
+      ungetc(c, input);
+      break;
+    }
 
-  while ((c = getc(stdin))) {
     if (i == word_size - 1) {
       word_size *= 2;
       *wordp = realloc(*wordp, word_size * sizeof(char));
@@ -33,11 +39,6 @@ size_t get_word(char **wordp) {
 	exit(1);
       }
     } 
-
-    if (isspace(c)) {
-      ungetc(c, stdin);
-      break;
-    }
 
     (*wordp)[i++] = c;
   }
@@ -49,48 +50,56 @@ size_t get_word(char **wordp) {
 
 enum WordMeaning {COMMAND_NAME, ARG, OUTPUT_FILE};
 
-int consume_whitespace() {
-  char c = getc(stdin);
+int consume_whitespace(FILE *input) {
+  char c = getc(input);
 
-  while (isspace(c) && c != '\n') {
-    c = getc(stdin);
+  while (isspace(c) && c != '\n' && c != EOF) {
+    c = getc(input);
   }
 
   return c;
 }
 
-Command get_command() {
+Command *get_command(FILE *input) {
   printf("wish> ");
   enum WordMeaning next_word_meaning = COMMAND_NAME;
-  Command command = { NULL, str_list_init(), NULL };
+  Command *command = malloc(sizeof(Command));
+  command->name = NULL;
+  command->args = str_list_init();
+  command->out_file_name = NULL;
 
   while (1) {
-    char c = consume_whitespace();
-    if (c == '\n') {
+    char c = consume_whitespace(input);
+    if (c == '\n' || c == EOF) {
       break;
     } else if (c == '>') {
       next_word_meaning = OUTPUT_FILE;
       continue;
     } else {
-      ungetc(c, stdin);
+      ungetc(c, input);
     }
     
     char *word = NULL;
-    get_word(&word);
+    get_word(&word, input);
 
     switch (next_word_meaning) {
     case COMMAND_NAME:
-      command.name = strdup(word);
+      command->name = strdup(word);
       break;
     case ARG:
-      str_list_append_item(command.args, word);
+      str_list_append_item(command->args, word);
       break;
     case OUTPUT_FILE:
-      command.out_file_name = strdup(word);
+      command->out_file_name = strdup(word);
     }
 
     free(word);
     next_word_meaning = ARG;
+  }
+
+  if (command->name == NULL) {
+    str_list_free(command->args);
+    return NULL;
   }
 
   return command;

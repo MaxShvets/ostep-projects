@@ -14,7 +14,7 @@
 #define DEBUG
 #define ERROR_MESSAGE "something went wrong\n"
 
-char *get_command_path(StringList *search_paths, Command command) {
+char *get_command_path(StringList *search_paths, Command *command) {
 #ifdef DEBUG
   printf("looking for command in:\n");
   for (StringListNode *node = search_paths->start; node != NULL; node = node->next) {
@@ -25,14 +25,14 @@ char *get_command_path(StringList *search_paths, Command command) {
   StringListNode *path;
 
   for (path = search_paths->start; path != NULL; path = path->next) {
-    char *command_path = malloc((strlen(path->str) + strlen(command.name) + 2) * sizeof(char));
+    char *command_path = malloc((strlen(path->str) + strlen(command->name) + 2) * sizeof(char));
     if (command_path == NULL) {
       fprintf(stderr, "couldn't allocate memory for command path: %s", strerror(errno));
       exit(1);
     }
     strcpy(command_path, path->str);
     strcat(command_path, "/");
-    strcat(command_path, command.name);
+    strcat(command_path, command->name);
 
     if (access(command_path, X_OK) == 0) {
       return command_path;
@@ -44,13 +44,13 @@ char *get_command_path(StringList *search_paths, Command command) {
   return NULL;
 }
 
-char **get_command_args_array(Command command) {
-  char **array = malloc((command.args->len + 2) * sizeof(char *));
-  array[0] = command.name;
+char **get_command_args_array(Command *command) {
+  char **array = malloc((command->args->len + 2) * sizeof(char *));
+  array[0] = command->name;
   StringListNode *node;
   int i;
 
-  for (i = 1, node = command.args->start; node != NULL; i++, node = node->next) {
+  for (i = 1, node = command->args->start; node != NULL; i++, node = node->next) {
     array[i] = node->str;
   }
 
@@ -59,12 +59,12 @@ char **get_command_args_array(Command command) {
   return array;
 }
 
-int setup_output(Command command) {
-  if (command.out_file_name == NULL) {
+int setup_output(Command *command) {
+  if (command->out_file_name == NULL) {
     return 0;
   }
 
-  FILE *out_file = fopen(command.out_file_name, "w");
+  FILE *out_file = fopen(command->out_file_name, "w");
   if (out_file == NULL) {
     fprintf(stderr, "error while opening file: %s\n", strerror(errno));
     return 1;
@@ -80,7 +80,7 @@ int setup_output(Command command) {
   return 0;
 }
 
-void execute_system_command(StringList *search_paths, Command command) {
+void execute_system_command(StringList *search_paths, Command *command) {
   char *command_path = get_command_path(search_paths, command);
   if (command_path == NULL) {
     fprintf(stderr, ERROR_MESSAGE);
@@ -94,7 +94,7 @@ void execute_system_command(StringList *search_paths, Command command) {
   for (int i = 0; args_array[i] != NULL; i++) {
     printf("arg: %s, %p\n", args_array[i], args_array + i);
   }
-  char *out_file_name = command.out_file_name;
+  char *out_file_name = command->out_file_name;
   printf("Output path: %s\n", out_file_name == NULL ? "null" : out_file_name);
 #endif
 
@@ -117,17 +117,17 @@ void execute_system_command(StringList *search_paths, Command command) {
   }
 }
 
-int execute_command(StringList *search_paths, Command command) {
-  if (strcmp(command.name, "exit") == 0) {
+int execute_command(StringList *search_paths, Command *command) {
+  if (strcmp(command->name, "exit") == 0) {
     return 1;
-  } else if (strcmp(command.name, "path") == 0) {
-    str_list_overwrite(command.args, search_paths);
-  } else if (strcmp(command.name, "cd") == 0) {
-    if (command.args->len != 1) {
+  } else if (strcmp(command->name, "path") == 0) {
+    str_list_overwrite(command->args, search_paths);
+  } else if (strcmp(command->name, "cd") == 0) {
+    if (command->args->len != 1) {
       fprintf(stderr, ERROR_MESSAGE);
     }
 
-    int rc = chdir(command.args->start->str);
+    int rc = chdir(command->args->start->str);
 
     if (rc != 0) {
       fprintf(stderr, ERROR_MESSAGE);
@@ -140,12 +140,31 @@ int execute_command(StringList *search_paths, Command command) {
 }
 
 int main(int argc, char *argv[]) {
-  Command command;
+  FILE *input;
+  
+  if (2 < argc) {
+    fprintf(stderr, "usage: wish [filename]\n");
+    exit(1);
+  } else if (argc == 2) {
+    input = fopen(argv[1], "r");
+    if (input == NULL) {
+      fprintf(stderr, "couldn't open input file\n");
+      exit(1);
+    }
+  } else {
+    input = stdin;
+  }
+  
+  Command *command;
   StringList *search_paths = str_list_init();
   str_list_append_item(search_paths, "/bin");
 
   while (1) {
-    command = get_command();
+    command = get_command(input);
+    if (command == NULL) {
+      break;
+    }
+    
     int rc = execute_command(search_paths, command);
     clear_command(command);
 

@@ -9,7 +9,7 @@ typedef struct command {
   char *out_file_name;
 } Command;
 
-void clear_command(Command command);
-Command get_command();
+void clear_command(Command *command);
+Command *get_command(FILE *input);
 
 #endif
