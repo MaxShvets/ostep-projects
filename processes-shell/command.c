@@ -70,7 +70,13 @@ Command *get_command(FILE *input) {
 
   while (1) {
     char c = consume_whitespace(input);
-    if (c == '\n' || c == EOF) {
+    if (c == '\n') {
+      if (command->name == NULL) {
+	continue;
+      } else {
+	break;
+      }
+    } else if (c == EOF) {
       break;
     } else if (c == '>') {
       next_word_meaning = OUTPUT_FILE;
