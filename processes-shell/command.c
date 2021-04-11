@@ -60,8 +60,11 @@ int consume_whitespace(FILE *input) {
   return c;
 }
 
-Command *get_command(FILE *input) {
-  printf("wish> ");
+Command *get_command(FILE *input, int interactive) {
+  if (interactive) {
+    printf("wish> ");
+  }
+ 
   enum WordMeaning next_word_meaning = COMMAND_NAME;
   Command *command = malloc(sizeof(Command));
   command->name = NULL;

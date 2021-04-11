@@ -11,7 +11,7 @@
 #include "command.h"
 #include "str_list.h"
 
-#define DEBUG
+// #define DEBUG
 #define ERROR_MESSAGE "something went wrong\n"
 
 char *get_command_path(StringList *search_paths, Command *command) {
@@ -141,7 +141,8 @@ int execute_command(StringList *search_paths, Command *command) {
 
 int main(int argc, char *argv[]) {
   FILE *input;
-  
+  int interactive;
+
   if (2 < argc) {
     fprintf(stderr, "usage: wish [filename]\n");
     exit(1);
@@ -151,8 +152,10 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "couldn't open input file\n");
       exit(1);
     }
+    interactive = 0;
   } else {
     input = stdin;
+    interactive = 1;
   }
   
   Command *command;
@@ -160,7 +163,7 @@ int main(int argc, char *argv[]) {
   str_list_append_item(search_paths, "/bin");
 
   while (1) {
-    command = get_command(input);
+    command = get_command(input, interactive);
     if (command == NULL) {
       break;
     }

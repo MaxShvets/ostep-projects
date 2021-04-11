@@ -10,6 +10,6 @@ typedef struct command {
 } Command;
 
 void clear_command(Command *command);
-Command *get_command(FILE *input);
+Command *get_command(FILE *input, int interactive);
 
 #endif
