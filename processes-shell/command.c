@@ -61,55 +61,57 @@ int consume_whitespace(FILE *input) {
 }
 
 Command *get_command(FILE *input, int interactive) {
-  if (interactive) {
-    printf("wish> ");
-  }
- 
-  enum WordMeaning next_word_meaning = COMMAND_NAME;
-  Command *command = malloc(sizeof(Command));
-  command->name = NULL;
-  command->args = str_list_init();
-  command->out_file_name = NULL;
+  int at_eof = 0;
 
-  while (1) {
-    char c = consume_whitespace(input);
-    if (c == '\n') {
-      if (command->name == NULL) {
+  while (!at_eof) {
+    if (interactive) {
+      printf("wish> ");
+    }
+
+    enum WordMeaning next_word_meaning = COMMAND_NAME;
+    Command *command = malloc(sizeof(Command));
+    command->name = NULL;
+    command->args = str_list_init();
+    command->out_file_name = NULL;
+    
+    while (1) {
+      char c = consume_whitespace(input);
+      if (c == '\n') {
+	break;
+      } else if (c == EOF) {
+	at_eof = 1;
+	break;
+      } else if (c == '>') {
+	next_word_meaning = OUTPUT_FILE;
 	continue;
       } else {
-	break;
+	ungetc(c, input);
       }
-    } else if (c == EOF) {
-      break;
-    } else if (c == '>') {
-      next_word_meaning = OUTPUT_FILE;
-      continue;
-    } else {
-      ungetc(c, input);
+
+      char *word = NULL;
+      get_word(&word, input);
+      
+      switch (next_word_meaning) {
+      case COMMAND_NAME:
+	command->name = strdup(word);
+	break;
+      case ARG:
+	str_list_append_item(command->args, word);
+	break;
+      case OUTPUT_FILE:
+	command->out_file_name = strdup(word);
+      }
+      
+      free(word);
+      next_word_meaning = ARG;
     }
     
-    char *word = NULL;
-    get_word(&word, input);
-
-    switch (next_word_meaning) {
-    case COMMAND_NAME:
-      command->name = strdup(word);
-      break;
-    case ARG:
-      str_list_append_item(command->args, word);
-      break;
-    case OUTPUT_FILE:
-      command->out_file_name = strdup(word);
+    if (command->name == NULL) {
+      str_list_free(command->args);
+    } else {
+      return command;
     }
-
-    free(word);
-    next_word_meaning = ARG;
   }
-
-  if (command->name == NULL) {
-    str_list_free(command->args);
-    return NULL;
-  }
-
-  return command;
+  
+  return NULL;
 }
