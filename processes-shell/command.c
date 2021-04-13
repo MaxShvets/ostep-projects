@@ -13,6 +13,10 @@ void clear_command(Command *command) {
   free(command);
 }
 
+int is_special_char(char c) {
+  return c == EOF || c == '&' || c == '\n' || c == '&';
+}
+
 size_t get_word(char **wordp, FILE *input) {
   size_t word_size = 2;
   *wordp = malloc(sizeof(char) * word_size);
@@ -25,7 +29,7 @@ size_t get_word(char **wordp, FILE *input) {
   char c;
   
   while ((c = getc(input))) {
-    if (isspace(c) || c == EOF) {
+    if (isspace(c) || is_special_char(c)) {
       ungetc(c, input);
       break;
     }
@@ -53,7 +57,7 @@ enum WordMeaning {COMMAND_NAME, ARG, OUTPUT_FILE};
 int consume_whitespace(FILE *input) {
   char c = getc(input);
 
-  while (isspace(c) && c != '\n' && c != EOF) {
+  while (isspace(c) && !is_special_char(c)) {
     c = getc(input);
   }
 
@@ -73,10 +77,15 @@ Command *get_command(FILE *input, int interactive) {
     command->name = NULL;
     command->args = str_list_init();
     command->out_file_name = NULL;
+    command->is_background = 0;
     
     while (1) {
       char c = consume_whitespace(input);
       if (c == '\n') {
+	interactive = 1;
+	break;
+      } else if (c == '&') {
+	command->is_background = 1;
 	break;
       } else if (c == EOF) {
 	at_eof = 1;

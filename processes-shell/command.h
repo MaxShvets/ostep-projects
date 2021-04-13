@@ -7,6 +7,7 @@ typedef struct command {
   char *name;
   StringList *args;
   char *out_file_name;
+  int is_background;
 } Command;
 
 void clear_command(Command *command);

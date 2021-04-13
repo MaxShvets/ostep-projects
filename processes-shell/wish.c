@@ -157,13 +157,15 @@ int main(int argc, char *argv[]) {
     input = stdin;
     interactive = 1;
   }
-  
+
+  int is_background = 0;
   Command *command;
   StringList *search_paths = str_list_init();
   str_list_append_item(search_paths, "/bin");
 
   while (1) {
-    command = get_command(input, interactive);
+    command = get_command(input, interactive && !is_background);
+    is_background = command->is_background;
     if (command == NULL) {
       break;
     }
