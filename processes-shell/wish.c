@@ -12,7 +12,7 @@
 #include "str_list.h"
 
 // #define DEBUG
-#define ERROR_MESSAGE "something went wrong\n"
+#define ERROR_MESSAGE "An error has occurred\n"
 
 char *get_command_path(StringList *search_paths, Command *command) {
 #ifdef DEBUG
@@ -119,12 +119,18 @@ void execute_system_command(StringList *search_paths, Command *command) {
 
 int execute_command(StringList *search_paths, Command *command) {
   if (strcmp(command->name, "exit") == 0) {
+    if (command->args->len != 0) {
+      fprintf(stderr, ERROR_MESSAGE);
+      return 0;
+    }
+    
     return 1;
   } else if (strcmp(command->name, "path") == 0) {
     str_list_overwrite(command->args, search_paths);
   } else if (strcmp(command->name, "cd") == 0) {
     if (command->args->len != 1) {
       fprintf(stderr, ERROR_MESSAGE);
+      return 0;
     }
 
     int rc = chdir(command->args->start->str);
@@ -179,4 +185,5 @@ int main(int argc, char *argv[]) {
   }
 
   str_list_free(search_paths);
+  return 0;
 }
