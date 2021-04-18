@@ -6,22 +6,22 @@
 
 #include "command.h"
 
-void clear_command(Command *command) {
-  free(command->name);
-  str_list_free(command->args);
-  free(command->out_file_name);
-  free(command);
-}
-
-enum WordMeaning {COMMAND_NAME, ARG, OUTPUT_FILE};
-
-Command *parse_command(char *command_str) {
-  Command *command = malloc(sizeof(Command));
+void init_command(Command *command) {
   command->name = NULL;
   command->args = str_list_init();
   command->out_file_name = NULL;
   command->is_background = 0;
+}
 
+void clear_command(Command *command) {
+  free(command->name);
+  str_list_free(command->args);
+  free(command->out_file_name);
+}
+
+enum WordMeaning {COMMAND_NAME, ARG, OUTPUT_FILE};
+
+int parse_command(Command *command, char *command_str) {
   int command_len = strlen(command_str);
   char word[command_len];
   int ci = 0;
@@ -59,17 +59,16 @@ Command *parse_command(char *command_str) {
     wi = 0;
   }
 
-  return command;
+  return 0;
 }
 
-Command *get_next_command(FILE *input, int interactive) {
+int get_next_command(Command *command, FILE *input, int interactive) {
   static char *line = NULL;
   static char *to_free = NULL;
   static size_t linecap = 0;
   ssize_t linelen;
-  Command *command = NULL;
 
-  while (command == NULL) {
+  while (command->name == NULL) {
     if (line == NULL) {
       free(to_free);
       if (interactive) {
@@ -81,20 +80,15 @@ Command *get_next_command(FILE *input, int interactive) {
 
     if (linelen == -1) {
       free(line);
-      return NULL;
+      return -1;
     }
     
     char *command_str = strsep(&line, "&");
-    command = parse_command(command_str);
+    parse_command(command, command_str);
     if (line != NULL) {
       command->is_background = 1;
     }
-    
-    if (command->name == NULL) {
-      clear_command(command);
-      command = NULL;
-    }
   }
   
-  return command;
+  return 0;
 }

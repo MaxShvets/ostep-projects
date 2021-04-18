@@ -10,7 +10,8 @@ typedef struct command {
   int is_background;
 } Command;
 
+void init_command(Command *command);
 void clear_command(Command *command);
-Command *get_next_command(FILE *input, int interactive);
+int get_next_command(Command *command, FILE *input, int interactive);
 
 #endif

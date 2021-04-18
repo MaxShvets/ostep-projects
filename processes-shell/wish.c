@@ -167,18 +167,19 @@ int main(int argc, char *argv[]) {
     interactive = 1;
   }
   
-  Command *command;
+  Command command;
   StringList *search_paths = str_list_init();
   str_list_append_item(search_paths, "/bin");
 
   while (1) {
-    command = get_next_command(input, interactive);
-    if (command == NULL) {
+    init_command(&command);
+    int rc = get_next_command(&command, input, interactive);
+    if (rc == -1) {
       break;
     }
     
-    int rc = execute_command(search_paths, command);
-    clear_command(command);
+    rc = execute_command(search_paths, &command);
+    clear_command(&command);
 
     if (rc != 0) {
       break;
