@@ -112,9 +112,11 @@ void execute_system_command(StringList *search_paths, Command *command) {
     execv(command_path, args_array);
     fprintf(stderr, ERROR_MESSAGE);
   } else {
-    wait(NULL);
     free(command_path);
     free(args_array);
+    if (!command->is_background) {
+      waitpid(rc, NULL, 0);
+    }
   }
 }
 
