@@ -165,10 +165,10 @@ int main(int argc, char *argv[]) {
 
   while (1) {
     command = get_command(input, interactive && !is_background);
-    is_background = command->is_background;
     if (command == NULL) {
       break;
     }
+    is_background = command->is_background;
     
     int rc = execute_command(search_paths, command);
     clear_command(command);
