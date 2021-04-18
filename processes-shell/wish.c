@@ -96,6 +96,7 @@ void execute_system_command(StringList *search_paths, Command *command) {
   }
   char *out_file_name = command->out_file_name;
   printf("Output path: %s\n", out_file_name == NULL ? "null" : out_file_name);
+  printf("Is background: %d\n", command->is_background);
 #endif
 
   int rc = fork();
@@ -163,18 +164,16 @@ int main(int argc, char *argv[]) {
     input = stdin;
     interactive = 1;
   }
-
-  int is_background = 0;
+  
   Command *command;
   StringList *search_paths = str_list_init();
   str_list_append_item(search_paths, "/bin");
 
   while (1) {
-    command = get_command(input, interactive && !is_background);
+    command = get_next_command(input, interactive);
     if (command == NULL) {
       break;
     }
-    is_background = command->is_background;
     
     int rc = execute_command(search_paths, command);
     clear_command(command);

@@ -11,6 +11,6 @@ typedef struct command {
 } Command;
 
 void clear_command(Command *command);
-Command *get_command(FILE *input, int interactive);
+Command *get_next_command(FILE *input, int interactive);
 
 #endif
