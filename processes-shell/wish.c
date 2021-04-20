@@ -176,6 +176,10 @@ int main(int argc, char *argv[]) {
     int rc = get_next_command(&command, input, interactive);
     if (rc == -1) {
       break;
+    } else if (rc != 0) {
+      fprintf(stderr, ERROR_MESSAGE);
+      clear_command(&command);
+      continue;
     }
     
     rc = execute_command(search_paths, &command);
