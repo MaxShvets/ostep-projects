@@ -53,10 +53,17 @@ int parse_command(Command *command, char *command_str) {
       str_list_append_item(command->args, word);
       break;
     case OUTPUT_FILE:
+      if (command->out_file_name != NULL) {
+	return 1;
+      }
       command->out_file_name = strdup(word);
     }
 
     wi = 0;
+  }
+
+  if (next_word_meaning == OUTPUT_FILE && command->out_file_name == NULL) {
+    return 1;
   }
 
   return 0;
@@ -84,7 +91,11 @@ int get_next_command(Command *command, FILE *input, int interactive) {
     }
     
     char *command_str = strsep(&line, "&");
-    parse_command(command, command_str);
+    int rc = parse_command(command, command_str);
+    if (rc != 0) {
+      return rc;
+    }
+    
     if (line != NULL) {
       command->is_background = 1;
     }
