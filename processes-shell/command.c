@@ -35,34 +35,36 @@ int parse_command(Command *command, char *command_str) {
       continue;
     }
 
+    if (wi != 0) {
+      word[wi] = '\0';
+      switch (next_word_meaning) {
+      case COMMAND_NAME:
+	command->name = strdup(word);
+	next_word_meaning = ARG;
+	break;
+      case ARG:
+	str_list_append_item(command->args, word);
+	break;
+      case OUTPUT_FILE:
+	if (command->out_file_name != NULL) {
+	  return 1;
+	}
+	command->out_file_name = strdup(word);
+      }
+      
+      wi = 0;
+    }
+
     if (c == '>') {
       next_word_meaning = OUTPUT_FILE;
     }
-
-    if (wi == 0) {
-      continue;
-    }
-
-    word[wi] = '\0';
-    switch (next_word_meaning) {
-    case COMMAND_NAME:
-      command->name = strdup(word);
-      next_word_meaning = ARG;
-      break;
-    case ARG:
-      str_list_append_item(command->args, word);
-      break;
-    case OUTPUT_FILE:
-      if (command->out_file_name != NULL) {
-	return 1;
-      }
-      command->out_file_name = strdup(word);
-    }
-
-    wi = 0;
   }
 
   if (next_word_meaning == OUTPUT_FILE && command->out_file_name == NULL) {
+    return 1;
+  }
+
+  if (command->name == NULL && command->out_file_name != NULL) {
     return 1;
   }
 
