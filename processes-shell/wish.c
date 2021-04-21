@@ -153,12 +153,12 @@ int main(int argc, char *argv[]) {
   int interactive;
 
   if (2 < argc) {
-    fprintf(stderr, "usage: wish [filename]\n");
+    fprintf(stderr, ERROR_MESSAGE);
     exit(1);
   } else if (argc == 2) {
     input = fopen(argv[1], "r");
     if (input == NULL) {
-      fprintf(stderr, "couldn't open input file\n");
+      fprintf(stderr, ERROR_MESSAGE);
       exit(1);
     }
     interactive = 0;
