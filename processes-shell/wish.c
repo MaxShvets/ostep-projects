@@ -190,6 +190,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  while (wait(NULL) != -1) {
+    // wait for next process
+  }
   str_list_free(search_paths);
   return 0;
 }
