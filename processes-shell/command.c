@@ -29,8 +29,9 @@ int parse_command(Command *command, char *command_str) {
   char c;
   enum WordMeaning next_word_meaning = COMMAND_NAME;
 
-  while ((c = command_str[ci++]) != '\0') {
-    if (!isspace(c) && c != '>') {
+  while (1) {
+    c = command_str[ci++];
+    if (!isspace(c) && c != '>' && c != '\0') {
       word[wi++] = c;
       continue;
     }
@@ -57,6 +58,8 @@ int parse_command(Command *command, char *command_str) {
 
     if (c == '>') {
       next_word_meaning = OUTPUT_FILE;
+    } else if (c == '\0') {
+      break;
     }
   }
 
