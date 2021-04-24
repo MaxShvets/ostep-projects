@@ -179,27 +179,38 @@ int main(int argc, char *argv[]) {
     interactive = 1;
   }
   
-  Command command;
   LinkedList *search_paths = linked_list_init();
   linked_list_append_item(search_paths, strdup("/bin"));
+  int exited = 0;
 
-  while (1) {
-    init_command(&command);
-    int rc = get_next_command(&command, input, interactive);
+  while (!exited) {
+    CommandList *commands = command_list_init();
+    int rc = get_next_commands(commands, input, interactive);
     if (rc == -1) {
       break;
     } else if (rc != 0) {
       fprintf(stderr, ERROR_MESSAGE);
-      clear_command(&command);
+      command_list_free(commands);
       continue;
     }
-    
-    rc = execute_command(search_paths, &command);
-    clear_command(&command);
 
-    if (rc != 0) {
-      break;
+    if (commands->len == 0) {
+      command_list_free(commands);
+      continue;
     }
+
+    CommandListNode *c;
+    for (c = commands->start; c != NULL; c = c->next) {
+      Command *command = c->value;
+      rc = execute_command(search_paths, command);
+
+      if (rc != 0) {
+	exited = 1;
+	break;
+      }
+    }
+
+    command_list_free(commands);
   }
 
   while (wait(NULL) != -1) {
