@@ -1,11 +1,11 @@
 #ifndef COMMAND_H
 #define COMMAND_H
 
-#include "str_list.h"
+#include "linked_list.h"
 
 typedef struct command {
   char *name;
-  StringList *args;
+  LinkedList *args;
   char *out_file_name;
   int is_background;
 } Command;

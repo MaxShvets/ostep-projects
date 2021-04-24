@@ -1,4 +1,4 @@
-SRCS = str_list.c command.c wish.c
+SRCS = linked_list.c command.c wish.c
 OBJS = $(SRCS:.c=.o)
 TARG = wish
 

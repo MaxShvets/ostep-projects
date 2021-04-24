@@ -8,14 +8,14 @@
 
 void init_command(Command *command) {
   command->name = NULL;
-  command->args = str_list_init();
+  command->args = linked_list_init();
   command->out_file_name = NULL;
   command->is_background = 0;
 }
 
 void clear_command(Command *command) {
   free(command->name);
-  str_list_free(command->args);
+  linked_list_free(command->args);
   free(command->out_file_name);
 }
 
@@ -44,7 +44,7 @@ int parse_command(Command *command, char *command_str) {
 	next_word_meaning = ARG;
 	break;
       case ARG:
-	str_list_append_item(command->args, word);
+	linked_list_append_item(command->args, strdup(word));
 	break;
       case OUTPUT_FILE:
 	if (command->out_file_name != NULL) {

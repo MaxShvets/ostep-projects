@@ -9,28 +9,28 @@
 #include <unistd.h>
 
 #include "command.h"
-#include "str_list.h"
+#include "linked_list.h"
 
 // #define DEBUG
 #define ERROR_MESSAGE "An error has occurred\n"
 
-char *get_command_path(StringList *search_paths, Command *command) {
+char *get_command_path(LinkedList *search_paths, Command *command) {
 #ifdef DEBUG
   printf("looking for command in:\n");
-  for (StringListNode *node = search_paths->start; node != NULL; node = node->next) {
-    printf("- %s\n", node->str);
+  for (LinkedListNode *node = search_paths->start; node != NULL; node = node->next) {
+    printf("- %s\n", node->value);
   }
 #endif
 
-  StringListNode *path;
+  LinkedListNode *path;
 
   for (path = search_paths->start; path != NULL; path = path->next) {
-    char *command_path = malloc((strlen(path->str) + strlen(command->name) + 2) * sizeof(char));
+    char *command_path = malloc((strlen(path->value) + strlen(command->name) + 2) * sizeof(char));
     if (command_path == NULL) {
       fprintf(stderr, "couldn't allocate memory for command path: %s", strerror(errno));
       exit(1);
     }
-    strcpy(command_path, path->str);
+    strcpy(command_path, path->value);
     strcat(command_path, "/");
     strcat(command_path, command->name);
 
@@ -47,11 +47,11 @@ char *get_command_path(StringList *search_paths, Command *command) {
 char **get_command_args_array(Command *command) {
   char **array = malloc((command->args->len + 2) * sizeof(char *));
   array[0] = command->name;
-  StringListNode *node;
+  LinkedListNode *node;
   int i;
 
   for (i = 1, node = command->args->start; node != NULL; i++, node = node->next) {
-    array[i] = node->str;
+    array[i] = node->value;
   }
 
   array[i] = NULL;
@@ -80,7 +80,7 @@ int setup_output(Command *command) {
   return 0;
 }
 
-void execute_system_command(StringList *search_paths, Command *command) {
+void execute_system_command(LinkedList *search_paths, Command *command) {
   char *command_path = get_command_path(search_paths, command);
   if (command_path == NULL) {
     fprintf(stderr, ERROR_MESSAGE);
@@ -120,7 +120,19 @@ void execute_system_command(StringList *search_paths, Command *command) {
   }
 }
 
-int execute_command(StringList *search_paths, Command *command) {
+void update_search_paths(LinkedList *search_paths, LinkedList *args) {
+  linked_list_free_nodes(search_paths->start);
+  search_paths->len = 0;
+  search_paths->start = NULL;
+  search_paths->end = NULL;
+  LinkedListNode* arg;
+
+  for (arg = args->start; arg != NULL; arg = arg->next) {
+    linked_list_append_item(search_paths, strdup(arg->value));
+  }
+}
+
+int execute_command(LinkedList *search_paths, Command *command) {
   if (strcmp(command->name, "exit") == 0) {
     if (command->args->len != 0) {
       fprintf(stderr, ERROR_MESSAGE);
@@ -129,14 +141,14 @@ int execute_command(StringList *search_paths, Command *command) {
     
     return 1;
   } else if (strcmp(command->name, "path") == 0) {
-    str_list_overwrite(command->args, search_paths);
+    update_search_paths(search_paths, command->args);
   } else if (strcmp(command->name, "cd") == 0) {
     if (command->args->len != 1) {
       fprintf(stderr, ERROR_MESSAGE);
       return 0;
     }
 
-    int rc = chdir(command->args->start->str);
+    int rc = chdir(command->args->start->value);
 
     if (rc != 0) {
       fprintf(stderr, ERROR_MESSAGE);
@@ -168,8 +180,8 @@ int main(int argc, char *argv[]) {
   }
   
   Command command;
-  StringList *search_paths = str_list_init();
-  str_list_append_item(search_paths, "/bin");
+  LinkedList *search_paths = linked_list_init();
+  linked_list_append_item(search_paths, strdup("/bin"));
 
   while (1) {
     init_command(&command);
@@ -193,6 +205,6 @@ int main(int argc, char *argv[]) {
   while (wait(NULL) != -1) {
     // wait for next process
   }
-  str_list_free(search_paths);
+  linked_list_free(search_paths);
   return 0;
 }
