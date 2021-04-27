@@ -14,6 +14,7 @@ typedef struct linked_list {
 
 LinkedList* linked_list_init();
 int linked_list_append_item(LinkedList *list, void *value);
+void* linked_list_pop_item(LinkedList *list);
 void linked_list_free(LinkedList *list);
 void linked_list_free_nodes(LinkedListNode *list);
 

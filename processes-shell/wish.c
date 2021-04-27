@@ -80,11 +80,11 @@ int setup_output(Command *command) {
   return 0;
 }
 
-void execute_system_command(LinkedList *search_paths, Command *command) {
+int execute_system_command(LinkedList *search_paths, Command *command) {
   char *command_path = get_command_path(search_paths, command);
   if (command_path == NULL) {
     fprintf(stderr, ERROR_MESSAGE);
-    return;
+    return 0;
   }
 
   char **args_array = get_command_args_array(command);
@@ -106,18 +106,20 @@ void execute_system_command(LinkedList *search_paths, Command *command) {
     int rc = setup_output(command);
     if (rc != 0) {
       fprintf(stderr, ERROR_MESSAGE);
-      return;
+      return 0;
     }
     
     execv(command_path, args_array);
     fprintf(stderr, ERROR_MESSAGE);
+    return 0;
   } else {
     free(command_path);
     free(args_array);
-    if (!command->is_background) {
-      waitpid(rc, NULL, 0);
-    }
+    
+    return rc;
   }
+
+  return 0;
 }
 
 void update_search_paths(LinkedList *search_paths, LinkedList *args) {
@@ -139,7 +141,7 @@ int execute_command(LinkedList *search_paths, Command *command) {
       return 0;
     }
     
-    return 1;
+    return -1;
   } else if (strcmp(command->name, "path") == 0) {
     update_search_paths(search_paths, command->args);
   } else if (strcmp(command->name, "cd") == 0) {
@@ -154,10 +156,19 @@ int execute_command(LinkedList *search_paths, Command *command) {
       fprintf(stderr, ERROR_MESSAGE);
     }
   } else {
-    execute_system_command(search_paths, command);
+    int rc = execute_system_command(search_paths, command);
+    return rc;
   }
 
   return 0;
+}
+
+void wait_for_processes(LinkedList *pids) {
+  while (pids->len != 0) {
+    pid_t *pid = linked_list_pop_item(pids);
+    waitpid(*pid, NULL, 0);
+    free(pid);
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -199,17 +210,27 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
+    LinkedList *pids = linked_list_init();
     CommandListNode *c;
     for (c = commands->start; c != NULL; c = c->next) {
       Command *command = c->value;
       rc = execute_command(search_paths, command);
 
-      if (rc != 0) {
+      if (rc == -1) {
 	exited = 1;
 	break;
+      } else if (rc != 0) {
+	int *pid = malloc(sizeof(int));
+	*pid = rc;
+	linked_list_append_item(pids, pid);
+      }
+
+      if (!command->is_background) {
+	wait_for_processes(pids);
       }
     }
 
+    linked_list_free(pids);
     command_list_free(commands);
   }
 

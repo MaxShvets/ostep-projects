@@ -27,6 +27,20 @@ int linked_list_append_item(LinkedList *list, void *value) {
   return ++(list->len);
 }
 
+void *linked_list_pop_item(LinkedList *list) {
+  LinkedListNode *start = list->start;
+  void *value = start->value;
+  list->start = start->next;
+  free(start);
+  list->len -= 1;
+
+  if (list->start == NULL) {
+    list->end = NULL;
+  }
+
+  return value;
+}
+
 void linked_list_free_nodes(LinkedListNode *start) {
   LinkedListNode *node = start;
 
